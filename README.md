@@ -1,5 +1,5 @@
 # ss_on_decoding_steps
-codes for "Scheduled Sampling Based on Decoding Steps for Neural Machine Translation".  (long paper of EMNLP-2022)
+Codes for "Scheduled Sampling Based on Decoding Steps for Neural Machine Translation" (long paper of EMNLP-2022).
 
 ## NMT
 
@@ -70,7 +70,7 @@ python $work_dir/$code_dir/thumt/bin/trainer.py \
 + [CNN / Daily Mail](https://drive.google.com/file/d/1jiDbDbAsqy_5BM79SmX6aSu5DQVCAZq1/view)
 + [Gigaword](https://drive.google.com/file/d/1USoQ8lJgN8kAWnUnRrupMGrPMLlDVqlV/view?usp=drive_open)
 
-we follow [ProphetNet](https://github.com/microsoft/ProphetNet) for data pre-processed and post-processed.
+We follow [ProphetNet](https://github.com/microsoft/ProphetNet) for data pre-processed and post-processed.
 Below, we take Gigaword as an example to show the training process.
 
 
