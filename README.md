@@ -1,5 +1,5 @@
 # ss_on_decoding_steps
-Codes for "Scheduled Sampling Based on Decoding Steps for Neural Machine Translation" (long paper of EMNLP-2022).
+Codes for "Scheduled Sampling Based on Decoding Steps for Neural Machine Translation" (long paper of EMNLP-2021).
 
 ## NMT
 
