@@ -1,151 +1,129 @@
-# ss_on_decoding_steps
-Codes for "Scheduled Sampling Based on Decoding Steps for Neural Machine Translation" (long paper of EMNLP-2021).
+# Scheduled Sampling Based on Decoding Steps for Neural Machine Translation (EMNLP-2021 main conference)
 
-## NMT
+## Contents
 
-### Datasets
-+ [WMT14 EN-DE](https://github.com/pytorch/fairseq/blob/master/examples/translation/prepare-wmt14en2de.sh)
-+ [WMT14 EN-FR](https://github.com/pytorch/fairseq/blob/master/examples/translation/prepare-wmt14en2fr.sh)
-+ [WMT19 ZH-EN](http://www.statmt.org/wmt19/translation-task.html)
+* [Overview](#overview)
+* [Background](#background)
+* [Quick to Use](#quick-to-use)
+* [Further Usage](#further-usage)
+* [Experiments](#experiments)
+* [Citation](#citation)
+* [Contact](#contact)
 
 
-### Pre-training
+
+## Overview
+
+We propose to conduct [scheduled sampling](https://proceedings.neurips.cc/paper/2015/file/e995f98d56967d946471af29d7bf99f1-Paper.pdf) based on decoding steps instead of the original training steps. We observe that our proposal can more realistically simulate the distribution of real translation errors, thus better bridging the gap between training and inference. The paper[a link] has been accepted to the main conference of EMNLP-2021.
+
+
+## Background
+
+<p align="center">
+  <img src="https://github.com/Adaxry/ss_on_decoding_steps/blob/main/figures/ss_for_transformer.png" alt="fastText" width="600"/>
+</p>
+
+We conduct scheduled sampling for the Transformer with a [two-pass decoder](https://aclanthology.org/P19-2049/). An example of pseudo code is as follows:    
+```python
+# first-pass: the same as the standard Transformer decoder
+first_decoder_outputs = decoder(first_decoder_inputs)
+
+# sampling tokens between model predicitions and ground-truth tokens
+second_decoder_inputs = sampling_function(first_decoder_outputs, first_decoder_inputs)
+
+# second-pass: computing the decoder again with the above sampled tokens
+second_decoder_outputs = decoder(second_decoder_inputs)
 
 ```
-code_dir=./nmt/THUMT
-data_dir=path2yourdata
-work_dir=./nmt
-export PYTHONPATH=$work_dir/$code_dir:$PYTHONPATH
-export PYTHONPATH=$work_dir:$PYTHONPATH
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
-signature=pretrained_model_name
+## Quick to Use
 
-output_dir=$work_dir/train/$signature
-if [ ! -d $output_dir ]; then
-    mkdir $output_dir
-    chmod 777 $output_dir -R
-fi
+Our approaches are suitable for most autoregressive-based tasks, Please feel free to try the following pseudo codes when conducting scheduled sampling:
 
-python $work_dir/$code_dir/thumt/bin/trainer.py \
-  --model transformer \
-  --output $output_dir \
-  --input $data_dir/train.src $data_dir/train.trg \
-  --vocabulary $data_dir/dict.src.txt $data_dir/dict.trg.txt \
-  --parameters=device_list=[0,1,2,3,4,5,6,7],eval_steps=90000000,train_steps=100000,batch_size=4096,max_length=128,residual_dropout=0.1,attention_dropout=0.1,relu_dropout=0.1,num_encoder_layers=6,num_decoder_layers=6,layer_preprocess=none,layer_postprocess=layer_norm,update_cycle=1,hidden_size=512,filter_size=2048,num_heads=8,label_smoothing=0.1,warmup_steps=4000,learning_rate=1.0,save_checkpoint_steps=5000,keep_checkpoint_max=200,position_info_type=absolute,shared_embedding_and_softmax_weights=True,shared_source_target_embedding=True
+
+```python
+import torch
+
+def sampling_function(first_decoder_outputs, first_decoder_inputs, max_seq_len, tgt_lengths)
+    '''
+    conduct scheduled sampling based on the index of decoded tokens 
+    param first_decoder_outputs: [batch_size, seq_len, hidden_size], model prediections 
+    param first_decoder_inputs: [batch_size, seq_len, hidden_size], ground-truth target tokens
+    param max_seq_len: scalar, the max lengh of target sequence
+    param tgt_lengths: [batch_size], the lenghs of target sequences in a mini-batch
+    '''
+
+    # indexs of decoding steps
+    t = torch.range(0, max_seq_len-1)
+
+    # differenct sampling strategy based on decoding steps
+    if sampling_strategy == "exponential":
+        threshold_table = exp_radix ** t  
+    elif sampling_strategy == "sigmoid":
+        threshold_table = sigmoid_k / (sigmoid_k + torch.exp(t / sigmoid_k ))
+    elif sampling_strategy == "linear":        
+        threshold_table = torch.max(epsilon, 1 - t / max_seq_len)
+    else:
+        ValuraiseeError("Unknown sampling_strategy %s" % sampling_strategy)
+
+    # convert threshold_table to [batch_size, seq_len]
+    threshold_table = threshold_table.unsqueeze_(0).repeat(max_seq_len, 1).tril()
+    thresholds = threshold_table[tgt_lengths].view(-1, max_seq_len)
+    thresholds = current_thresholds[:, :seq_len]
+
+    # conduct sampling based on the above thresholds
+    random_select_seed = torch.rand([batch_size, seq_len]) 
+    second_decoder_inputs = torch.where(random_select_seed < thresholds, first_decoder_inputs, first_decoder_outputs)
+
+    return second_decoder_inputs
+    
+```
+## Further Usage
+
+Error accumulation is a common phenomenon in NLP tasks. Whenever you want to simulate the accumulation of errors, our method may come in handy. For examples:
+
++ [Target Denoising](http://www.statmt.org/wmt20/pdf/2020.wmt-1.24.pdf)
+
+```python
+# sampling tokens between noisy target tokens and ground-truth tokens
+decoder_inputs = sampling_function(noisy_decoder_inputs, golden_decoder_inputs, max_seq_len, tgt_lengths)
+
+# computing the decoder with the above sampled tokens
+decoder_outputs = decoder(decoder_inputs)
+
 ```
 
++ [Multi-turn Dialogue](https://arxiv.org/abs/1506.08909)
 
+```python
+# sampling utterences from model predictions and ground-truth utterences
+contexts = sampling_function(predicted_utterences, golden_utterences, max_turns, current_turns)
 
-### Finetuning
-```
-code_dir=./nmt/THUMT-schedule_composite
-work_dir=./nmt
-data_dir=path2yourdata
-
-export PYTHONPATH=$work_dir/$code_dir:$PYTHONPATH
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
-
-signature=finetune_model_name
-
-output_dir=$work_dir/train/$signature
-if [ ! -d $output_dir ]; then
-    mkdir $output_dir
-fi
-
-python $work_dir/$code_dir/thumt/bin/trainer.py \
-  --model transformer \
-  --output $output_dir \
-  --input $data_dir/train.src $data_dir/train.trg \
-  --vocabulary $data_dir/dict.src.txt $data_dir/dict.trg.txt \
-  --checkpoint $work_dir/train/pretrained_model_name
-  --parameters=device_list=[0,1,2,3,4,5,6,7],eval_steps=90000000,train_steps=300000,batch_size=4096,max_length=128,residual_dropout=0.1,attention_dropout=0.1,relu_dropout=0.1,num_encoder_layers=6,num_decoder_layers=6,layer_preprocess=none,layer_postprocess=layer_norm,update_cycle=1,hidden_size=512,filter_size=2048,num_heads=8,label_smoothing=0.1,warmup_steps=4000,learning_rate=1.0,save_checkpoint_steps=5000,keep_checkpoint_max=200,position_info_type=absolute,shared_embedding_and_softmax_weights=True,shared_source_target_embedding=True,mle_rate=0,zero_step=False,trainstep_scheduled_sampling_strategy=sigmoid,timestep_scheduled_sampling_strategy=exp,timestep_exp_epsilon=0.99,trainstep_sigmoid_k=20000
-```
-
-
-
-## Text Summarization
-
-### Datasets
-+ [CNN / Daily Mail](https://drive.google.com/file/d/1jiDbDbAsqy_5BM79SmX6aSu5DQVCAZq1/view)
-+ [Gigaword](https://drive.google.com/file/d/1USoQ8lJgN8kAWnUnRrupMGrPMLlDVqlV/view?usp=drive_open)
-
-We follow [ProphetNet](https://github.com/microsoft/ProphetNet) for data pre-processed and post-processed.
-Below, we take Gigaword as an example to show the training process.
-
-
-### Pre-training
-```
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7,
-work_dir=./text_summarization
-DATA_DIR=path2_yourdata
-ARCH=ngram_transformer_prophet_large
-CRITERION=ngram_language_loss
-TENSORBOARD_LOGDIR=$work_dir/ggw/finetune_ggw_tensorboard
-PRETRAINED_MODEL=$work_dir/pretrained_checkpoints/prophetnet_large_pretrained_160G_14epoch_model.pt
-fairseq_path=fairseq
-
-USER_DIR=$work_dir/prophetnet
-SAVE_DIR=$work_dir/ggw/pretrained_model_name
-
-python $fairseq_path/train_epoch_ss.py $DATA_DIR \
-    --fp16 \
-    --user-dir $USER_DIR --task translation_prophetnet --arch $ARCH \
-    --optimizer adam --adam-betas '(0.9, 0.999)' --clip-norm 0.1 \
-    --lr 1e-4 --min-lr 1e-09 \
-    --lr-scheduler inverse_sqrt --warmup-init-lr 1e-07 --warmup-updates 1000 \
-    --dropout 0.1 --attention-dropout 0.1 --weight-decay 0.01 \
-    --criterion $CRITERION --label-smoothing 0.1 \
-    --update-freq 64 --max-sentences 4 \
-    --num-workers 8  \
-    --load-sep \
-    --load-from-pretrained-model $PRETRAINED_MODEL \
-    --ddp-backend=no_c10d --max-epoch 10 \
-    --max-source-positions 512 --max-target-positions 512 \
-    --skip-invalid-size-inputs-valid-test \
-    --save-dir $SAVE_DIR \
-    --keep-last-epochs 10 \
-    --tensorboard-logdir $TENSORBOARD_LOGDIR \
-    --seed 1 \
+model_predictions = dialogue_model(contexts, target_inputs)
 ```
 
 
-### Finetuning
+## Experiments
 
+
+
+## Citation
+Please cite this paper if you find this repo useful.
 ```
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7,
-work_dir=./text_summarization
-DATA_DIR=path2_yourdata
-ARCH=ngram_transformer_prophet_large
-CRITERION=ngram_language_loss
-TENSORBOARD_LOGDIR=$work_dir/ggw/finetune_ggw_tensorboard
-PRETRAINED_MODEL=$work_dir/ggw/pretrained_model_name/checkpoint10.pt
-fairseq_path=fairseq
-
-USER_DIR=$work_dir/prophetnet
-SAVE_DIR=$work_dir/ggw/finetune_model_name
-
-python $fairseq_path/train_epoch_ss.py $DATA_DIR \
-    --fp16 \
-    --user-dir $USER_DIR --task translation_prophetnet --arch $ARCH \
-    --optimizer adam --adam-betas '(0.9, 0.999)' --clip-norm 0.1 \
-    --lr 1e-4 --min-lr 1e-09 \
-    --lr-scheduler inverse_sqrt --warmup-init-lr 1e-07 --warmup-updates 1000 \
-    --dropout 0.1 --attention-dropout 0.1 --weight-decay 0.01 \
-    --criterion $CRITERION --label-smoothing 0.1 \
-    --update-freq 64 --max-sentences 4 \
-    --num-workers 8  \
-    --load-sep \
-    --load-from-pretrained-model $PRETRAINED_MODEL \
-    --ddp-backend=no_c10d --max-epoch 10 \
-    --max-source-positions 512 --max-target-positions 512 \
-    --skip-invalid-size-inputs-valid-test \
-    --save-dir $SAVE_DIR \
-    --keep-last-epochs 10 \
-    --tensorboard-logdir $TENSORBOARD_LOGDIR \
-    --seed 1 \
-    --decodingstep_schduled_sampling_strategy exp \
-    --decodingstep_sigmoid_k 50 \
-    --decodingstep_exp_radix 0.99
+@inproceedings{liu_ss_decoding_2021,
+    title = "Scheduled Sampling Based on Decoding Steps for Neural Machine Translation",
+    author = "Liu, Yijin  and
+      Meng, Fandong  and
+      Chen, Yufeng  and
+      Xu, Jinan  and
+      Zhou, Jie",
+    booktitle = "Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing (EMNLP)",
+    year = "2021",
+    address = "Online"
+}
 ```
+
+## Contact
+Please feel free to contact us (yijinliu@tencent.com) for any further questions.
+
 
