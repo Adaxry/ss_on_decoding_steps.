@@ -112,7 +112,7 @@ if [ ! -d $output_dir ]; then
     mkdir $output_dir
 fi
 
-test_names='newstest2014'
+test_names='your_test_name' # e.g., newstest2014
 
 for idx in `seq 5000 5000 300000`; do
   echo model_checkpoint_path: \"model.ckpt-$idx\" > $work_dir/train/$signature/checkpoint
@@ -125,7 +125,10 @@ for idx in `seq 5000 5000 300000`; do
     --parameters=device_list=[0],decode_alpha=0.6,decode_batch_size=128
   echo evaluating with checkpoint-$idx
   cd $output_dir
-  sh ./evaluation/eval.sh "$test_names".out.$idx
+  # uncomment one of the bellow three lines according to your datasets
+  # sh ./evaluation/ende/eval_test14.sh "$test_names".out.$idx  # eval for WMT14-ENDE
+  # sh ./evaluation/enfr/eval_test14.sh "$test_names".out.$idx  # eval for WMT14-ENFR
+  # sh ./evaluation/zhen/eval_test19.sh "$test_names".out.$idx  # eval for WMT19-ZHEN
   cat $output_dir/"$test_names".out.$idx.delbpe.atat.eval
 done
 ```
