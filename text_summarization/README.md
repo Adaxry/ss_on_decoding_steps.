@@ -13,7 +13,7 @@
 + [CNN / Daily Mail](https://drive.google.com/file/d/1jiDbDbAsqy_5BM79SmX6aSu5DQVCAZq1/view)
 + [Gigaword](https://drive.google.com/file/d/1USoQ8lJgN8kAWnUnRrupMGrPMLlDVqlV/view?usp=drive_open)
 
-We follow [ProphetNet](https://github.com/microsoft/ProphetNet) for data pre-processed and post-processed.
+We follow [ProphetNet](https://github.com/microsoft/ProphetNet/tree/master/ProphetNet_En) for data pre-processed and post-processed.
 Below, we take Gigaword as an example to show the training process.
 
 
@@ -91,3 +91,58 @@ python $fairseq_path/train_epoch_ss.py $DATA_DIR \
     --decodingstep_sigmoid_k 50 \
     --decodingstep_exp_radix 0.99
 ```
+
+
+### Inference
+
+```
+export CUDA_VISIBLE_DEVICES=0,1
+
+work_dir=./text_summarization
+DATA_DIR=path2_yourdata
+ARCH=ngram_transformer_prophet_large
+CRITERION=ngram_language_loss
+TENSORBOARD_LOGDIR=$work_dir/ggw/finetune_ggw_tensorboard
+PRETRAINED_MODEL=$work_dir/ggw/pretrained_model_name/checkpoint10.pt
+fairseq_path=fairseq
+
+
+signature=finetune_model_name
+
+output_dir=$work_dir/ggw/results/$signature
+if [ ! -d $output_dir ]; then
+    mkdir $output_dir
+fi
+
+for idx in `seq 1 1 10`; do
+  BEAM=4
+  LENPEN=1.0
+  SUFFIX=_ck"$idx"_pelt"$LENPEN"_test_beam"$BEAM"
+  CHECK_POINT=$work_dir/ggw/$signature/checkpoint"$idx".pt
+  python3 $fairseq_path/generate.py $data_dir --path $CHECK_POINT --user-dir $work_dir/prophetnet --task translation_prophetnet --batch-size 150 --gen-subset test --beam $BEAM --num-workers 6 --lenpen $LENPEN 2>&1 --results-path $output_dir
+  cp $output_dir/generate-results.txt $output_dir/out$SUFFIX
+  grep ^H  $output_dir/out$SUFFIX | cut -c 3- | sort -n | cut -f3- | sed "s/ ##//g" >  $output_dir/out"$SUFFIX"_sorted
+done
+```
+
+
+### Evaluation
+
+We use [pyrouge](https://github.com/bheinzerling/pyrouge) for evaluation and follow [ProphetNet](https://github.com/microsoft/ProphetNet/tree/master/ProphetNet_En) for data post-processed.
+
++ CNN / Daily Mail
+```
+python ./evaluation/cnndm/postprocess_cnn_dm.py \
+  --generated $model_output \
+  --golden ./evaluation/cnndm/cnndm.test.summary > $model_output.score
+```
+
++ Gigaword
+```
+python ./evaluation/ggw/eval_ggw.py \
+      --pred $model_output \
+      --gold ./evaluation/ggw/ggw.test.summary  --perl > $model_output.score
+
+```
+
+
