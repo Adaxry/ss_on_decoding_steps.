@@ -104,7 +104,7 @@ model_predictions = dialogue_model(contexts, target_inputs)
 
 
 ## Experiments
-We provide scripts to reproduce the results in this paper([NMT]() and [text summarization]())
+We provide scripts to reproduce the results in this paper([NMT](https://github.com/Adaxry/ss_on_decoding_steps./blob/main/nmt/README.md) and [text summarization](https://github.com/Adaxry/ss_on_decoding_steps./blob/main/text_summarization/README.md))
 
 
 ## Citation
