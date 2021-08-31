@@ -23,7 +23,7 @@ We propose to conduct [scheduled sampling](https://proceedings.neurips.cc/paper/
   <img src="https://github.com/Adaxry/ss_on_decoding_steps/blob/main/figures/ss_for_transformer.png" alt="fastText" width="600"/>
 </p>
 
-We conduct scheduled sampling for the Transformer with a [two-pass decoder](https://aclanthology.org/P19-2049/). An example of pseudo code is as follows:    
+We conduct scheduled sampling for the Transformer with a [two-pass decoder](https://aclanthology.org/P19-2049/). An example of pseudo-code is as follows:    
 ```python
 # first-pass: the same as the standard Transformer decoder
 first_decoder_outputs = decoder(first_decoder_inputs)
@@ -38,7 +38,7 @@ second_decoder_outputs = decoder(second_decoder_inputs)
 
 ## Quick to Use
 
-Our approaches are suitable for most autoregressive-based tasks, Please feel free to try the following pseudo codes when conducting scheduled sampling:
+Our approaches are suitable for most autoregressive-based tasks. Please try the following pseudo-codes when conducting scheduled sampling:
 
 
 ```python
