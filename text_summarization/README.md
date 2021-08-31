@@ -31,7 +31,7 @@ fairseq_path=fairseq
 USER_DIR=$work_dir/prophetnet
 SAVE_DIR=$work_dir/ggw/pretrained_model_name
 
-python $fairseq_path/train_epoch_ss.py $DATA_DIR \
+python $fairseq_path/train.py $DATA_DIR \
     --fp16 \
     --user-dir $USER_DIR --task translation_prophetnet --arch $ARCH \
     --optimizer adam --adam-betas '(0.9, 0.999)' --clip-norm 0.1 \
@@ -65,10 +65,10 @@ TENSORBOARD_LOGDIR=$work_dir/ggw/finetune_ggw_tensorboard
 PRETRAINED_MODEL=$work_dir/ggw/pretrained_model_name/checkpoint10.pt
 fairseq_path=fairseq
 
-USER_DIR=$work_dir/prophetnet
+USER_DIR=$work_dir/prophetnet_decoding_step_ss_mle_absolute
 SAVE_DIR=$work_dir/ggw/finetune_model_name
 
-python $fairseq_path/train_epoch_ss.py $DATA_DIR \
+python $fairseq_path/train.py $DATA_DIR \
     --fp16 \
     --user-dir $USER_DIR --task translation_prophetnet --arch $ARCH \
     --optimizer adam --adam-betas '(0.9, 0.999)' --clip-norm 0.1 \
