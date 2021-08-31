@@ -14,7 +14,7 @@
 
 ## Overview
 
-We propose to conduct [scheduled sampling](https://proceedings.neurips.cc/paper/2015/file/e995f98d56967d946471af29d7bf99f1-Paper.pdf) based on decoding steps instead of the original training steps. We observe that our proposal can more realistically simulate the distribution of real translation errors, thus better bridging the gap between training and inference. The paper[a link] has been accepted to the main conference of EMNLP-2021.
+We propose to conduct [scheduled sampling](https://proceedings.neurips.cc/paper/2015/file/e995f98d56967d946471af29d7bf99f1-Paper.pdf) based on decoding steps instead of the original training steps. We observe that our proposal can more realistically simulate the distribution of real translation errors, thus better bridging the gap between training and inference. The [paper](https://arxiv.org/abs/2108.12963) has been accepted to the main conference of EMNLP-2021.
 
 
 ## Background
